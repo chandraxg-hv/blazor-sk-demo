@@ -1,0 +1,62 @@
+﻿@page "/"
+@using Microsoft.SemanticKernel
+@using Microsoft.SemanticKernel.ChatCompletion
+@using Microsoft.SemanticKernel.Connectors.OpenAI
+@rendermode InteractiveServer
+@inject Kernel Kernel
+@inject IChatCompletionService ChatService
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hitachi Digital Solutions - Agentplane</h1>
+
+<p><i>This Blazor application enables seamless interaction with a Language Model (LLM) through Semantic Kernel, leveraging intent recognition for an intuitive chat experience.</i></p>
+
+
+@code {
+    private string message = string.Empty;
+    private string response = string.Empty;
+
+    ChatHistory chat = new ChatHistory(@"You're a helpful assistant demonstrating the capabilities of OpenAI in a Blazor App.
+    You can answer questions, provide information, and assist users in various tasks. Please respond to the user's queries in a friendly and informative manner.
+    When asked for Weather or exchange rates or news, please use the tools available in the system to get the latest information.
+    If asked to do something dangerous things, please say that does not comply with Hitachi Corp Policy.");
+
+    private async Task Send()
+    {
+        //Add history and enable asynchronous message streaming for Prompts...
+
+        chat.AddUserMessage(message);
+        response = string.Empty;
+        
+        OpenAIPromptExecutionSettings settings = new () { ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions };
+        var chunks = ChatService.GetStreamingChatMessageContentsAsync(chat, settings, Kernel);
+        await foreach (var chunk in chunks)
+        {
+            response += chunk;
+            StateHasChanged(); // Update the UI with each chunk
+        }
+        chat.AddAssistantMessage(response);
+
+        // Alternatively, if you want to use the InvokePromptAsync method directly for batch 
+        //response = await Kernel.InvokePromptAsync<string>(message);
+    }
+}
+
+<div class="mb-3">
+    <label for="messageTextarea" class="form-label"><b>User Prompt:</b></label>
+    <textarea id="messageTextarea" class="form-control" @bind="message" rows="3"></textarea>
+</div>
+<button class="btn btn-primary" @onclick="Send">Send</button>
+
+@* <br><br><label><b>AI Response :</b></label><br>
+<div class="card mt-3">
+    <div class="card-body">
+        <p>@response</p> 
+    </div>
+</div>     *@
+
+<div class="mb-3">
+    <label for="responseTextarea" class="form-label"><b>AI Response:</b></label>
+    <textarea id="responseTextarea" class="form-control" @bind="response" rows="10" readonly></textarea>
+</div>
